@@ -1,25 +1,39 @@
 package com.martinsteinhauer.disdrillery.git.writer;
 
-import org.apache.commons.io.FileUtils;
-import org.eclipse.core.internal.utils.FileUtil;
-
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
-public abstract class DbWriter {
+public abstract class DbWriter<T> {
 
     private File dbFile;
+    private List<T> database;
 
     public DbWriter(File dbFile) {
         this.dbFile = dbFile;
+        this.database = new ArrayList<>();
     }
 
-    public abstract void appendLine(String line);
+    public abstract void write();
+    public abstract void close();
 
-    private File getDbFile() {
+    protected File getDbFile() {
         return dbFile;
     }
 
-    protected void appendLineInternal(String line) {
+    public void addEntry(T entry) {
+        database.add(entry);
+    }
 
+    public void clearDatabase() {
+        database.clear();
+    }
+
+    public void addAllEntries(List<T> entries) {
+        database.addAll(entries);
+    }
+
+    public List<T> getDatabase() {
+        return this.database;
     }
 }

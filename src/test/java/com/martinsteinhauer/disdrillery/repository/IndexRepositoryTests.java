@@ -9,8 +9,10 @@ public class IndexRepositoryTests {
 
     @Test
     public void testRepositoryInit() {
+
         String repositoryRoot = "/Users/martinsteinhauer/Desktop/disdrilleryRepo";
+        String repositoryIndexFile = "/Users/martinsteinhauer/Desktop/disdrilleryRepo/index.json";
         IndexFileRepository repository = new IndexFileRepository(new File(repositoryRoot));
-        repository.getIndexFile();
+
     }
 }
