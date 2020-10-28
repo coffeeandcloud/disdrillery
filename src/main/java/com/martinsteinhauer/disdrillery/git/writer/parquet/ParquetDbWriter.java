@@ -65,6 +65,7 @@ public abstract class ParquetDbWriter<T> extends DbWriter<T> implements AutoClos
         if(writer != null) {
             try {
                 writer.close();
+                getDatabase().clear();
             } catch (IOException e) {
                 e.printStackTrace();
             }

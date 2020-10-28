@@ -1,30 +1,31 @@
 package com.martinsteinhauer.disdrillery.git.tree;
 
 import org.eclipse.jgit.lib.Constants;
-import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
-import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.RevWalk;
 
 import java.io.IOException;
 
 public abstract class TreeTraverser {
 
-    private RevWalk revWalk;
-    private ObjectId latestCommit;
+    private final Repository repository;
 
     public TreeTraverser(Repository repository) {
-        this.revWalk = new RevWalk(repository);
-        try {
-            revWalk.markStart(revWalk.parseCommit(repository.resolve(Constants.HEAD)));
-            latestCommit = repository.resolve(Constants.HEAD);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        this.repository = repository;
     }
 
     protected RevWalk getRevWalk() {
-        return this.revWalk;
+        RevWalk revWalkInstance = new RevWalk(repository);
+        try {
+            revWalkInstance.markStart(revWalkInstance.parseCommit(repository.resolve(Constants.HEAD)));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return revWalkInstance;
+    }
+
+    protected Repository getRepository() {
+        return repository;
     }
 
     public abstract void process();

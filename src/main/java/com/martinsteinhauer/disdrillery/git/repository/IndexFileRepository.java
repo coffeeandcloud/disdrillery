@@ -5,26 +5,27 @@ import com.martinsteinhauer.disdrillery.git.model.IndexFile;
 import org.apache.commons.io.Charsets;
 import org.apache.commons.io.FileUtils;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
 import java.nio.charset.Charset;
 
-public class IndexFileRepository {
+public class IndexFileRepository extends Repository {
 
     private final String INDEX_FILE_NAME = "index.json";
     private final File absoluteIndexFile;
-    private File repositoryRoot;
     private IndexFile indexFile;
     private final Gson gson;
 
     public IndexFileRepository(File repositoryRoot) {
+        super(repositoryRoot);
         this.gson = new Gson().newBuilder()
                 .setPrettyPrinting()
                 .disableHtmlEscaping()
                 .create();
         this.indexFile = new IndexFile();
-        this.repositoryRoot = repositoryRoot;
         StringBuilder sb = new StringBuilder();
-        sb.append(repositoryRoot.getAbsolutePath()).append(File.separator).append(INDEX_FILE_NAME);
+        sb.append(getRoot().getAbsolutePath()).append(File.separator).append(INDEX_FILE_NAME);
         absoluteIndexFile = new File(sb.toString());
         if(!absoluteIndexFile.exists()) {
             initIndexFile();

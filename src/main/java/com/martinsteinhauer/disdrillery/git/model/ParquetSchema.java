@@ -3,6 +3,8 @@ package com.martinsteinhauer.disdrillery.git.model;
 import org.apache.avro.Schema;
 import org.apache.avro.SchemaBuilder;
 
+import java.util.ArrayList;
+
 public class ParquetSchema {
 
     public static Schema getCommitVertexSchema() {
@@ -25,6 +27,19 @@ public class ParquetSchema {
                 .fields()
                 .requiredString("parent_commit_sha")
                 .requiredString("commit_sha")
+                .endRecord();
+    }
+
+    public static Schema getFileContentVertexSchema() {
+        return SchemaBuilder
+                .record("file_content_vertex")
+                .fields()
+                .requiredString("commit_sha")
+                .requiredString("object_sha")
+                .requiredString("name")
+                .optionalString("type")
+                .name("path")
+                .type().array().items().stringType().arrayDefault(new ArrayList<>())
                 .endRecord();
     }
 }
