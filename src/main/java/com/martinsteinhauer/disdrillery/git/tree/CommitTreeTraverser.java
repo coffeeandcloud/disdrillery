@@ -2,20 +2,31 @@ package com.martinsteinhauer.disdrillery.git.tree;
 
 import com.martinsteinhauer.disdrillery.git.model.CommitEdge;
 import com.martinsteinhauer.disdrillery.git.model.CommitVertex;
+import com.martinsteinhauer.disdrillery.git.model.FileContentVertex;
+import com.martinsteinhauer.disdrillery.git.repository.FileContentRepository;
 import com.martinsteinhauer.disdrillery.git.writer.DbWriter;
 import com.martinsteinhauer.disdrillery.git.writer.parquet.CommitEdgeDbWriter;
 import com.martinsteinhauer.disdrillery.git.writer.parquet.CommitVertexDbWriter;
+import com.martinsteinhauer.disdrillery.git.writer.parquet.FileContentVertexDbWriter;
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
+import org.eclipse.jgit.treewalk.TreeWalk;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 public class CommitTreeTraverser extends TreeTraverser {
 
     private List<DbWriter> dbWriters;
+    private FileContentRepository fileContentRepository;
+
 
     public CommitTreeTraverser(Repository repository) {
         super(repository);
@@ -29,28 +40,81 @@ public class CommitTreeTraverser extends TreeTraverser {
     @Override
     public void process() {
         System.out.println("Processing commits...");
+        AtomicReference<Long> processedCommits = new AtomicReference<>(0L);
+        FastContentReader fastContentReader = new FastContentReader(getRepository(), 8);
+        System.out.println("Creating indices...");
         getRevWalk().forEach(revCommit -> {
-            try {
+            for(DbWriter dbWriter: dbWriters) {
+                handleDbWriteCall(dbWriter, revCommit);
+            }
 
-                /*
-                try(TreeWalk treeWalk = new TreeWalk(getRevWalk().getObjectReader())) {
-                    treeWalk.addTree(revCommit.getTree());
-                    treeWalk.setRecursive(true);
-                    while(treeWalk.next()) {
-                        String path = treeWalk.getPathString();
-                        System.out.println(path);
-                    }
+            try(TreeWalk treeWalk = new TreeWalk(getRevWalk().getObjectReader())) {
+                List<ImmutablePair<ObjectId, FileContentVertex>> objectIds = new ArrayList<>();
+                treeWalk.addTree(revCommit.getTree());
+                treeWalk.setRecursive(true);
+                while(treeWalk.next()) {
+                    FileContentVertex contentVertex = handleFileContentWriteCall(getFileContentDbWriter(), revCommit, treeWalk);
+                    objectIds.add(new ImmutablePair<>(treeWalk.getObjectId(0), contentVertex));
                 }
-                 */
-                for(DbWriter dbWriter: dbWriters) {
-                    handleDbWriteCall(dbWriter, revCommit);
-                }
-            } catch (Exception e) {
+                fastContentReader.copyTo(fileContentRepository, objectIds);
+                getFileContentDbWriter().write();
+                getFileContentDbWriter().clearDatabase();
+            } catch (IOException | InterruptedException e) {
                 e.printStackTrace();
             }
+            processedCommits.updateAndGet(v -> v + 1);
+            System.out.println("Processed commits: " + processedCommits);
         });
         writeAll();
         closeAll();
+
+        /*
+        processedCommits.set(0L);
+
+        System.out.println("Moving file contents...");
+        getRevWalk().forEach(revCommit -> {
+
+            processedCommits.updateAndGet(v -> v + 1);
+            System.out.println("Processed commits: " + processedCommits);
+        });
+
+         */
+        fastContentReader.shutdown();
+    }
+
+    private FileContentVertex handleFileContentWriteCall(FileContentVertexDbWriter dbWriter, RevCommit revCommit, TreeWalk treeWalk) {
+        FileContentVertex contentVertex = new FileContentVertex();
+        contentVertex.setCommitSha(revCommit.getId().getName());
+        contentVertex.setObjectSha(treeWalk.getObjectId(0).getName());
+        // parse file path
+        try {
+            String[] split = treeWalk.getNameString().split("\\.");
+            contentVertex.setName(split[0]);
+            if(split.length > 1) {
+                contentVertex.setType(split[1]);
+            }
+            contentVertex.setPath(treeWalk.getPathString().split(File.separator));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        dbWriter.addEntry(contentVertex);
+        return contentVertex;
+    }
+
+    private FileContentVertexDbWriter getFileContentDbWriter() {
+        for(DbWriter dbWriter: dbWriters) {
+            if(dbWriter instanceof FileContentVertexDbWriter) return (FileContentVertexDbWriter)dbWriter;
+        }
+        return null;
+    }
+
+    public FileContentRepository getFileContentRepository() {
+        return fileContentRepository;
+    }
+
+    public CommitTreeTraverser setFileContentRepository(FileContentRepository fileContentRepository) {
+        this.fileContentRepository = fileContentRepository;
+        return this;
     }
 
     private void handleDbWriteCall(DbWriter dbWriter, RevCommit revCommit) {
@@ -83,16 +147,18 @@ public class CommitTreeTraverser extends TreeTraverser {
     }
 
     private void writeAll() {
-        System.out.println("Writing all databases...");
         for(DbWriter dbWriter: dbWriters) {
-            dbWriter.write();
+            if(!(dbWriter instanceof FileContentVertexDbWriter)) {
+                dbWriter.write();
+            }
         }
     }
 
     private void closeAll() {
-        System.out.println("Closing all databases...");
         for(DbWriter dbWriter: dbWriters) {
-            dbWriter.close();
+            if(!(dbWriter instanceof FileContentVertexDbWriter)) {
+                dbWriter.close();
+            }
         }
     }
 }
