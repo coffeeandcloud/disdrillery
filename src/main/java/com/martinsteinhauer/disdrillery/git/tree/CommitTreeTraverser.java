@@ -67,18 +67,6 @@ public class CommitTreeTraverser extends TreeTraverser {
         });
         writeAll();
         closeAll();
-
-        /*
-        processedCommits.set(0L);
-
-        System.out.println("Moving file contents...");
-        getRevWalk().forEach(revCommit -> {
-
-            processedCommits.updateAndGet(v -> v + 1);
-            System.out.println("Processed commits: " + processedCommits);
-        });
-
-         */
         fastContentReader.shutdown();
     }
 

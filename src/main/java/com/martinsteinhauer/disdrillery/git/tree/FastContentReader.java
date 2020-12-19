@@ -26,7 +26,6 @@ public class FastContentReader {
         List<Future<ObjectId>> futures = executor.invokeAll(tasks);
         for(Future<ObjectId> f: futures) {
             try {
-                //System.out.println("Copy '"+f.get().getName()+ "' done: "+f.isDone());
                 f.get();
             } catch (ExecutionException e) {
                 e.printStackTrace();

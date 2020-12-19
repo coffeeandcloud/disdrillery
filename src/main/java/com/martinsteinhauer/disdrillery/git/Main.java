@@ -4,6 +4,7 @@ import com.martinsteinhauer.disdrillery.git.model.CommitEdge;
 import com.martinsteinhauer.disdrillery.git.model.CommitVertex;
 import com.martinsteinhauer.disdrillery.git.model.FileContentVertex;
 import com.martinsteinhauer.disdrillery.git.repository.FileContentRepository;
+import com.martinsteinhauer.disdrillery.git.repository.GitRepository;
 import com.martinsteinhauer.disdrillery.git.tree.CommitTreeTraverser;
 import com.martinsteinhauer.disdrillery.git.writer.parquet.CommitEdgeDbWriter;
 import com.martinsteinhauer.disdrillery.git.writer.parquet.CommitVertexDbWriter;
@@ -41,7 +42,12 @@ public class Main {
 
         FileContentRepository fileContentRepository = new FileContentRepository(new File("/Users/martinsteinhauer/Desktop/disdrilleryRepo"));
 
-        try(Repository repository = Git.open(new File(args[0])).getRepository()) {
+        try(Git git = Git.open(new File(args[0]))) {
+            Repository repository = git.getRepository();
+
+            GitRepository gitRepository = new GitRepository(git);
+            gitRepository.checkoutAllBranches();
+
             CommitTreeTraverser commitTraverser = new CommitTreeTraverser(repository);
             commitTraverser.setFileContentRepository(fileContentRepository);
             commitTraverser.addDbWriter(commitVertexDbWriter);
