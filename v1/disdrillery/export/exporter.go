@@ -8,10 +8,19 @@ import (
 	"log"
 )
 
-type ParquetExporter struct {
+type Base struct {
+	parquetWriter *writer.ParquetWriter
 }
 
-func getParquetWriter(output string, model interface{}) *writer.ParquetWriter {
+type ParquetExporter interface {
+	Export(output string)
+}
+
+type ParquetExporterBase struct {
+	parquetWriter *writer.ParquetWriter
+}
+
+func GetParquetWriter(output string, model interface{}) *writer.ParquetWriter {
 	file, err := local.NewLocalFileWriter(output)
 	if err != nil {
 		log.Fatal(err)
@@ -27,55 +36,44 @@ func getParquetWriter(output string, model interface{}) *writer.ParquetWriter {
 	return parquetWriter
 }
 
-func (exporter *ParquetExporter) ExportGeneric(output string, data []interface{}) {
+func (exporter *ParquetExporterBase) ExportGeneric(output string, data []interface{}) {
 	log.Println(len(data))
 }
 
-func (exporter *ParquetExporter) ExportCommitVertex(output string, data *[]model.CommitVertex) {
-	parquetWriter := getParquetWriter(output, new(model.CommitVertex))
-
-	/*
-		dRef := *data
-		v, isType := dRef.([]model.CommitVertex)
-
-		if isType {
-			log.Printf("%d commits", len(v))
-			for _, cv := range v {
-				if err := parquetWriter.Write(cv); err != nil {
-					log.Fatal("Write error", err)
-				}
-			}
-
-			if err := parquetWriter.WriteStop(); err != nil {
-				log.Fatal("Write Stop error", err)
-			}
-		}
-	*/
-	log.Printf("Got %d vertices.", len(*data))
-	for _, cv := range *data {
-		if err := parquetWriter.Write(cv); err != nil {
-			log.Fatal("Write error", err)
-		}
-	}
-
-	if err := parquetWriter.WriteStop(); err != nil {
-		log.Fatal("Write Stop error", err)
-	}
-	log.Println("Wrote vertex file successfully to", output)
+func (exporter *ParquetExporterBase) SetWriter(parquetWriter *writer.ParquetWriter) *ParquetExporterBase {
+	exporter.parquetWriter = parquetWriter
+	return exporter
 }
 
-func (exporter *ParquetExporter) ExportCommitEdge(output string, data *[]model.CommitEdge) {
-	parquetWriter := getParquetWriter(output, new(model.CommitEdge))
-	log.Printf("Got %d edges.", len(*data))
-	for _, cv := range *data {
-		if err := parquetWriter.Write(cv); err != nil {
-			log.Fatal("Write error", err)
+func (exporter *ParquetExporterBase) Export(data interface{}) {
+	if exporter.parquetWriter == nil {
+		log.Fatal("Please set parquet writer before exporting parquet file.")
+		return
+	}
+	if v, isType := data.(*[]model.CommitVertex); isType {
+		log.Printf("%d commits", len(*v))
+		for _, cv := range *v {
+			if err := exporter.parquetWriter.Write(cv); err != nil {
+				log.Fatal("Write error", err)
+			}
+		}
+
+		if err := exporter.parquetWriter.WriteStop(); err != nil {
+			log.Fatal("Write Stop error", err)
+		}
+	} else if v, isType := data.(*[]model.CommitEdge); isType {
+		log.Printf("%d commits", len(*v))
+		for _, cv := range *v {
+			if err := exporter.parquetWriter.Write(cv); err != nil {
+				log.Fatal("Write error", err)
+			}
+		}
+
+		if err := exporter.parquetWriter.WriteStop(); err != nil {
+			log.Fatal("Write Stop error", err)
 		}
 	}
 
-	if err := parquetWriter.WriteStop(); err != nil {
-		log.Fatal("Write Stop error", err)
-	}
-	log.Println("Wrote vertex file successfully to", output)
+	log.Println("Wrote vertex file successfully.")
 
 }

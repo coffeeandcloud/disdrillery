@@ -1,6 +1,8 @@
 package transformer
 
-import "github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
+import (
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
+)
 
 type CommitHistoryTransformer struct {
 	name             string
@@ -44,4 +46,12 @@ func (transformer CommitHistoryTransformer) GetInstance() CommitHistoryTransform
 		name:             "CommitHistoryTransformer",
 		operationalLevel: "commit",
 	}
+}
+
+func (transformer *CommitHistoryTransformer) Export(output string) {
+	// Export vertices
+	//writer := export.GetParquetWriter("output/commit-vertices.parquet", new(model.CommitVertex))
+	//export.Export(writer, &transformer.edgeData)
+	// Export edges
+
 }

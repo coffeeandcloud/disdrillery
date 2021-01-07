@@ -89,9 +89,13 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 		return nil
 	})
 	log.Printf("Found %d commits.", len(*commitHistoryTransformer.GetVertexData()))
-	exporter := export.ParquetExporter{}
-	exporter.ExportCommitVertex("output/commit-vertex.parquet", commitHistoryTransformer.GetVertexData())
-	exporter.ExportCommitEdge("output/commit-edge.parquet", commitHistoryTransformer.GetEdgeData())
+	exporter := export.ParquetExporterBase{}
+	exporter.
+		SetWriter(export.GetParquetWriter("output/commit-vertices.parquet", new(model.CommitVertex))).
+		Export(commitHistoryTransformer.GetVertexData())
+	exporter.
+		SetWriter(export.GetParquetWriter("output/commit-edges.parquet", new(model.CommitEdge))).
+		Export(commitHistoryTransformer.GetEdgeData())
 
 }
 
