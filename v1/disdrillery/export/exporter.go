@@ -46,9 +46,9 @@ func (exporter *ParquetExporter) Export(data interface{}) {
 		log.Fatal("Please set parquet writer before exporting parquet file.")
 		return
 	}
-	if v, isType := data.([]model.CommitVertex); isType {
-		log.Printf("%d commits", len(v))
-		for _, cv := range v {
+	if v, isType := data.(*[]model.CommitVertex); isType {
+		log.Printf("%d commits", len(*v))
+		for _, cv := range *v {
 			if err := exporter.parquetWriter.Write(cv); err != nil {
 				log.Fatal("Write error", err)
 			}
@@ -57,9 +57,9 @@ func (exporter *ParquetExporter) Export(data interface{}) {
 		if err := exporter.parquetWriter.WriteStop(); err != nil {
 			log.Fatal("Write Stop error", err)
 		}
-	} else if v, isType := data.([]model.CommitEdge); isType {
-		log.Printf("%d commits", len(v))
-		for _, cv := range v {
+	} else if v, isType := data.(*[]model.CommitEdge); isType {
+		log.Printf("%d commits", len(*v))
+		for _, cv := range *v {
 			if err := exporter.parquetWriter.Write(cv); err != nil {
 				log.Fatal("Write error", err)
 			}

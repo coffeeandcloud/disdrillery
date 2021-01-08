@@ -60,11 +60,11 @@ func (transformer *CommitHistoryTransformer) Export() {
 	vertexWriter := export.GetParquetWriter(transformer.vertexOutput, new(model.CommitVertex))
 	export.GetInstance().
 		SetWriter(vertexWriter).
-		Export(transformer.vertexData)
+		Export(&transformer.vertexData)
 
 	// Export edges
 	edgeWriter := export.GetParquetWriter(transformer.edgeOutput, new(model.CommitEdge))
 	export.GetInstance().
 		SetWriter(edgeWriter).
-		Export(transformer.edgeData)
+		Export(&transformer.edgeData)
 }
