@@ -26,7 +26,7 @@ func main() {
 		UseInMemoryTempRepository: false,
 		PrintLogs:                 true,
 	})
-	commitHistoryTransformer := transformer.CommitHistoryTransformer{}.GetInstance()
+	commitHistoryTransformer := transformer.GetInstance()
 	disdriller.AppendTransformer(&commitHistoryTransformer)
 
 	disdriller.Analyze(func(state string) {

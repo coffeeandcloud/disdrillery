@@ -1,12 +1,17 @@
 package transformer
 
 import (
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 )
+
+const CommitHistoryTransformerName string = "CommitHistoryTransformer"
 
 type CommitHistoryTransformer struct {
 	name             string
 	operationalLevel string
+	vertexOutput     string
+	edgeOutput       string
 	vertexData       []model.CommitVertex
 	edgeData         []model.CommitEdge
 }
@@ -41,17 +46,25 @@ func (transformer *CommitHistoryTransformer) GetEdgeData() *[]model.CommitEdge {
 	return &transformer.edgeData
 }
 
-func (transformer CommitHistoryTransformer) GetInstance() CommitHistoryTransformer {
+func GetInstance() CommitHistoryTransformer {
 	return CommitHistoryTransformer{
-		name:             "CommitHistoryTransformer",
+		name:             CommitHistoryTransformerName,
 		operationalLevel: "commit",
+		vertexOutput:     "data/commit-vertices.parquet",
+		edgeOutput:       "data/commit-edges.parquet",
 	}
 }
 
-func (transformer *CommitHistoryTransformer) Export(output string) {
+func (transformer *CommitHistoryTransformer) Export() {
 	// Export vertices
-	//writer := export.GetParquetWriter("output/commit-vertices.parquet", new(model.CommitVertex))
-	//export.Export(writer, &transformer.edgeData)
-	// Export edges
+	vertexWriter := export.GetParquetWriter(transformer.vertexOutput, new(model.CommitVertex))
+	export.GetInstance().
+		SetWriter(vertexWriter).
+		Export(transformer.vertexData)
 
+	// Export edges
+	edgeWriter := export.GetParquetWriter(transformer.edgeOutput, new(model.CommitEdge))
+	export.GetInstance().
+		SetWriter(edgeWriter).
+		Export(transformer.edgeData)
 }

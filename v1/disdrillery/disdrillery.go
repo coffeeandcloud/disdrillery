@@ -4,7 +4,6 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
-	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
 	"log"
@@ -13,7 +12,7 @@ import (
 
 type Disdriller struct {
 	repository  *git.Repository
-	transformer []*transformer.Transformer
+	transformer []transformer.Transformer
 }
 
 func (driller *Disdriller) Init(config model.RepositoryConfig) *Disdriller {
@@ -44,7 +43,7 @@ func (driller *Disdriller) GetGoGitRepository() *git.Repository {
 }
 
 func (driller *Disdriller) AppendTransformer(transformer transformer.Transformer) *Disdriller {
-	driller.transformer = append(driller.transformer, &transformer)
+	driller.transformer = append(driller.transformer, transformer)
 
 	log.Println("Found new fancy Git-transformer: ", transformer.GetName())
 	return driller
@@ -68,10 +67,18 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 		log.Fatal(err)
 	}
 
-	commitHistoryTransformer := transformer.CommitHistoryTransformer{}.GetInstance()
+	for _, t := range driller.transformer {
+		refs.ForEach(func(commit *object.Commit) error {
+			driller.visitCommit(commit, &t)
+			return nil
+		})
+		t.Export()
+	}
+}
 
-	refs.ForEach(func(commit *object.Commit) error {
-		commitHistoryTransformer.AppendCommitVertex(model.CommitVertex{
+func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Transformer) {
+	if v, isType := (*t).(*transformer.CommitHistoryTransformer); isType {
+		v.AppendCommitVertex(model.CommitVertex{
 			CommitHash:         commit.Hash.String(),
 			AuthorName:         commit.Author.Name,
 			AuthorMail:         commit.Author.Email,
@@ -85,18 +92,8 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 		for i, pHash := range commit.ParentHashes {
 			pHashes[i] = pHash.String()
 		}
-		commitHistoryTransformer.AppendCommitEdge(commit.Hash.String(), pHashes)
-		return nil
-	})
-	log.Printf("Found %d commits.", len(*commitHistoryTransformer.GetVertexData()))
-	exporter := export.ParquetExporterBase{}
-	exporter.
-		SetWriter(export.GetParquetWriter("output/commit-vertices.parquet", new(model.CommitVertex))).
-		Export(commitHistoryTransformer.GetVertexData())
-	exporter.
-		SetWriter(export.GetParquetWriter("output/commit-edges.parquet", new(model.CommitEdge))).
-		Export(commitHistoryTransformer.GetEdgeData())
-
+		v.AppendCommitEdge(commit.Hash.String(), pHashes)
+	}
 }
 
 func GetInstance() *Disdriller {
