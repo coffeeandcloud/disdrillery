@@ -1,6 +1,7 @@
 package transformer
 
 import (
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 )
@@ -46,12 +47,12 @@ func (transformer *CommitHistoryTransformer) GetEdgeData() *[]model.CommitEdge {
 	return &transformer.edgeData
 }
 
-func GetInstance() CommitHistoryTransformer {
+func GetInstance(indexStorage *index.IndexStorage) CommitHistoryTransformer {
 	return CommitHistoryTransformer{
 		name:             CommitHistoryTransformerName,
 		operationalLevel: "commit",
-		vertexOutput:     "data/commit-vertices.parquet",
-		edgeOutput:       "data/commit-edges.parquet",
+		vertexOutput:     CreateFilepathFromWorkingDir(indexStorage, "commit-vertices.parquet"),
+		edgeOutput:       CreateFilepathFromWorkingDir(indexStorage, "commit-edges.parquet"),
 	}
 }
 
