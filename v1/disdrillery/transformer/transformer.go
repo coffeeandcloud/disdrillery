@@ -10,8 +10,13 @@ type Transformer interface {
 	// Operational level defines how and where the transformer is called within the mining process
 	GetOperationalLevel() string
 	Export()
+	GetMetaInfo() []index.Meta
 }
 
-func CreateFilepathFromWorkingDir(indexStorage *index.IndexStorage, filename string) string {
-	return indexStorage.GetDataDir() + string(filepath.Separator) + filename
+func GetDataFilepathFromWorkingDir(indexStorage *index.IndexStorage, filename string) string {
+	return indexStorage.GetDataDir() + string(filepath.Separator) + filename + "." + indexStorage.GetIndexFile().StorageFormat
+}
+
+func GetFileFilepathFromWorkingDir(indexStorage *index.IndexStorage, filename string) string {
+	return indexStorage.GetFileDir() + string(filepath.Separator) + filename
 }

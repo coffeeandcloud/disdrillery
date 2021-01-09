@@ -6,7 +6,7 @@ import (
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 )
 
-const CommitHistoryTransformerName string = "CommitHistoryTransformer"
+const CommitHistoryTransformerName string = "CommitHistory"
 
 type CommitHistoryTransformer struct {
 	name             string
@@ -47,12 +47,12 @@ func (transformer *CommitHistoryTransformer) GetEdgeData() *[]model.CommitEdge {
 	return &transformer.edgeData
 }
 
-func GetInstance(indexStorage *index.IndexStorage) CommitHistoryTransformer {
-	return CommitHistoryTransformer{
+func GetCommitHistoryTransformerInstance(indexStorage *index.IndexStorage) *CommitHistoryTransformer {
+	return &CommitHistoryTransformer{
 		name:             CommitHistoryTransformerName,
 		operationalLevel: "commit",
-		vertexOutput:     CreateFilepathFromWorkingDir(indexStorage, "commit-vertices.parquet"),
-		edgeOutput:       CreateFilepathFromWorkingDir(indexStorage, "commit-edges.parquet"),
+		vertexOutput:     GetDataFilepathFromWorkingDir(indexStorage, "commit-vertices"),
+		edgeOutput:       GetDataFilepathFromWorkingDir(indexStorage, "commit-edges"),
 	}
 }
 
@@ -68,4 +68,17 @@ func (transformer *CommitHistoryTransformer) Export() {
 	export.GetInstance().
 		SetWriter(edgeWriter).
 		Export(&transformer.edgeData)
+}
+
+func (transformer *CommitHistoryTransformer) GetMetaInfo() []index.Meta {
+	metas := make([]index.Meta, 2)
+	metas = append(metas, index.Meta{
+		Providing: transformer.GetName(),
+		File:      transformer.vertexOutput,
+	})
+	metas = append(metas, index.Meta{
+		Providing: transformer.GetName(),
+		File:      transformer.edgeOutput,
+	})
+	return metas
 }

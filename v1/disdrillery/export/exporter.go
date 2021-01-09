@@ -8,10 +8,6 @@ import (
 	"log"
 )
 
-type Exporter interface {
-	Export(output string)
-}
-
 type ParquetExporter struct {
 	parquetWriter *writer.ParquetWriter
 }
@@ -46,6 +42,8 @@ func (exporter *ParquetExporter) Export(data interface{}) {
 		log.Fatal("Please set parquet writer before exporting parquet file.")
 		return
 	}
+
+	// TODO find a more generic way of writing out the data. Not casting leads to empty files?
 	if v, isType := data.(*[]model.CommitVertex); isType {
 		log.Printf("%d commits", len(*v))
 		for _, cv := range *v {
@@ -57,7 +55,20 @@ func (exporter *ParquetExporter) Export(data interface{}) {
 		if err := exporter.parquetWriter.WriteStop(); err != nil {
 			log.Fatal("Write Stop error", err)
 		}
-	} else if v, isType := data.(*[]model.CommitEdge); isType {
+	}
+	if v, isType := data.(*[]model.CommitEdge); isType {
+		log.Printf("%d commits", len(*v))
+		for _, cv := range *v {
+			if err := exporter.parquetWriter.Write(cv); err != nil {
+				log.Fatal("Write error", err)
+			}
+		}
+
+		if err := exporter.parquetWriter.WriteStop(); err != nil {
+			log.Fatal("Write Stop error", err)
+		}
+	}
+	if v, isType := data.(*[]model.FileContentVertex); isType {
 		log.Printf("%d commits", len(*v))
 		for _, cv := range *v {
 			if err := exporter.parquetWriter.Write(cv); err != nil {

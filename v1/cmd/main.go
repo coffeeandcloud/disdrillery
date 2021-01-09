@@ -18,21 +18,21 @@ type CliArguments struct {
 
 func main() {
 	args := CliArguments{}
-	ctx := kong.Parse(&args)
+	_ = kong.Parse(&args)
 
-	indexStorage := index.GetInstance().Init("myrepo")
-
-	fmt.Println(ctx.Command())
-
+	// Configure analysis repository
 	disdriller := disdrillery.GetInstance().Init(model.RepositoryConfig{
 		RepositoryUrl:             "https://github.com/google/gson",
 		IsLocal:                   false,
 		UseInMemoryTempRepository: false,
 		PrintLogs:                 true,
 	})
-	commitHistoryTransformer := transformer.GetInstance(indexStorage)
-	disdriller.AppendTransformer(&commitHistoryTransformer)
+	indexStorage := index.GetInstance().Init("myrepo")
+	disdriller.AppendTransformer(transformer.GetCommitHistoryTransformerInstance(indexStorage))
+	disdriller.AppendTransformer(transformer.GetCommitContentTransformerInstance(indexStorage))
+	indexStorage.SetMetaInfos(disdriller.GetMetaInfos()).UpdateIndexFile()
 
+	// Run transformation process
 	disdriller.Analyze(func(state string) {
 		log.Println(state)
 	})

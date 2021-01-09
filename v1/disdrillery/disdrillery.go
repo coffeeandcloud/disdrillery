@@ -4,6 +4,7 @@ import (
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
 	"log"
@@ -54,20 +55,20 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 	log.Println("We have", len(driller.transformer), "transformers.")
 
 	head, err := driller.repository.Head()
-
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	refs, err := driller.repository.Log(&git.LogOptions{
-		From: head.Hash(),
-		All:  true,
-	})
-	if err != nil {
-		log.Fatal(err)
-	}
+	for i, t := range driller.transformer {
+		refs, err := driller.repository.Log(&git.LogOptions{
+			From: head.Hash(),
+			All:  true,
+		})
+		if err != nil {
+			log.Fatal(err)
+		}
 
-	for _, t := range driller.transformer {
+		log.Printf("(%d/%d) Running transformer '%s'", i+1, len(driller.transformer), t.GetName())
 		refs.ForEach(func(commit *object.Commit) error {
 			driller.visitCommit(commit, &t)
 			return nil
@@ -94,6 +95,33 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 		}
 		v.AppendCommitEdge(commit.Hash.String(), pHashes)
 	}
+	if v, isType := (*t).(*transformer.CommitContentTransformer); isType {
+		files, err := commit.Files()
+		if err != nil {
+			return
+		}
+		err = files.ForEach(func(file *object.File) error {
+			v.AppendFileContentVertex(model.FileContentVertex{
+				CommitHash: commit.Hash.String(),
+				ObjectHash: file.Hash.String(),
+				FileName:   file.Name,
+				FileSize:   file.Size,
+			})
+			v.CopyFile(file)
+			return nil
+		})
+		if err != nil {
+			log.Println(err)
+		}
+	}
+}
+
+func (driller *Disdriller) GetMetaInfos() []index.Meta {
+	metas := make([]index.Meta, len(driller.transformer))
+	for _, t := range driller.transformer {
+		metas = append(metas, t.GetMetaInfo()...)
+	}
+	return metas
 }
 
 func GetInstance() *Disdriller {
