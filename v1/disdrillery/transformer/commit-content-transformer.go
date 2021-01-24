@@ -38,6 +38,10 @@ func (transformer *CommitContentTransformer) AppendFileContentVertex(vertex mode
 	transformer.contentExporter.WriteBatch(&data)
 }
 
+func (transformer *CommitContentTransformer) AppendFileContentVertices(vertices []model.FileContentVertex) {
+	transformer.contentExporter.WriteBatch(vertices)
+}
+
 func (transformer *CommitContentTransformer) Export() {
 	transformer.contentExporter.Export()
 }

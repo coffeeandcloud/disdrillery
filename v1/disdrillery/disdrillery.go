@@ -96,6 +96,7 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 			if count != 0 {
 				fmt.Printf("\r Processed %d files.", count)
 			}
+
 			return nil
 		})
 
@@ -128,17 +129,19 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 		if err != nil {
 			return -1
 		}
+		treeData := make([]model.FileContentVertex, 0)
 		err = files.ForEach(func(file *object.File) error {
-			v.AppendFileContentVertex(model.FileContentVertex{
+			treeData = append(treeData, model.FileContentVertex{
 				CommitHash: commit.Hash.String(),
 				ObjectHash: file.Hash.String(),
 				FileName:   file.Name,
 				FileSize:   file.Size,
 			})
-			//v.CopyFile(file)
+			v.CopyFile(file)
 			count = count + 1
 			return nil
 		})
+		v.AppendFileContentVertices(treeData)
 		if err != nil {
 			log.Fatal(err)
 		}
