@@ -1,7 +1,7 @@
 package transformer
 
 import (
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"path/filepath"
 )
 

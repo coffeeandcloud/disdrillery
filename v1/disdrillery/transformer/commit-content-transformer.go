@@ -3,8 +3,8 @@ package transformer
 import (
 	"github.com/emirpasic/gods/sets/hashset"
 	"github.com/go-git/go-git/v5/plumbing/object"
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"io"
 	"log"
@@ -20,6 +20,7 @@ type CommitContentTransformer struct {
 	fileContentOutput string
 	fileContentData   []model.FileContentVertex
 	copiedFiles       *hashset.Set
+	contentExporter   *export.ParquetExporter
 }
 
 func (transformer *CommitContentTransformer) GetName() string {
@@ -31,23 +32,26 @@ func (transformer *CommitContentTransformer) GetOperationalLevel() string {
 }
 
 func (transformer *CommitContentTransformer) AppendFileContentVertex(vertex model.FileContentVertex) {
-	transformer.fileContentData = append(transformer.fileContentData, vertex)
+	// TODO make use of batch writing, this could maybe affect the performance (writing each file tree may be a sufficient solution
+	data := make([]model.FileContentVertex, 0)
+	data = append(data, vertex)
+	transformer.contentExporter.WriteBatch(&data)
 }
 
 func (transformer *CommitContentTransformer) Export() {
-	vertexWriter := export.GetParquetWriter(transformer.fileContentOutput, new(model.FileContentVertex))
-	export.GetInstance().
-		SetWriter(vertexWriter).
-		Export(&transformer.fileContentData)
+	transformer.contentExporter.Export()
 }
 
 func GetCommitContentTransformerInstance(indexStorage *index.IndexStorage) *CommitContentTransformer {
-	return &CommitContentTransformer{
+	transformer := CommitContentTransformer{
 		name:              CommitContentTransformerName,
 		operationalLevel:  "file",
 		fileContentOutput: GetDataFilepathFromWorkingDir(indexStorage, "commit-content-vertex"),
 		copiedFiles:       hashset.New(),
 	}
+	writer := export.GetParquetWriter(transformer.fileContentOutput, new(model.FileContentVertex))
+	transformer.contentExporter = export.GetInstance().SetWriter(writer)
+	return &transformer
 }
 
 func (transformer *CommitContentTransformer) GetMetaInfo() []index.Meta {
@@ -60,14 +64,15 @@ func (transformer *CommitContentTransformer) GetMetaInfo() []index.Meta {
 }
 
 func (transformer *CommitContentTransformer) CopyFile(file *object.File) {
-	if transformer.copiedFiles.Contains(file.Hash.String()) {
+	output := index.GetInstance().GetFileDir() + string(filepath.Separator) + file.Hash.String()
+	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		return
 	}
+
 	reader, err := file.Reader()
 	if err != nil {
 		log.Fatal(err)
 	}
-	output := index.GetInstance().GetFileDir() + string(filepath.Separator) + file.Hash.String()
 	writer, err := os.Create(output)
 	if err != nil {
 		log.Println(err)
@@ -77,8 +82,5 @@ func (transformer *CommitContentTransformer) CopyFile(file *object.File) {
 	_, err = io.Copy(writer, reader)
 	if err != nil {
 		log.Println(err)
-	} else {
-		//log.Printf("Copied: '%s' -> '%s' (%d bytes)", file.Name, output, written)
-		transformer.copiedFiles.Add(file.Hash.String())
 	}
 }

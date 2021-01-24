@@ -1,5 +1,9 @@
 package model
 
+import (
+	"strings"
+)
+
 type RepositoryConfig struct {
 	RepositoryUrl             string
 	IsLocal                   bool
@@ -13,5 +17,14 @@ func (config RepositoryConfig) GetDefaultRepositoryConfigFromUrl(repositoryUrl s
 		IsLocal:                   false,
 		UseInMemoryTempRepository: true,
 		PrintLogs:                 false,
+	}
+}
+
+func (config RepositoryConfig) GetRepositoryName() string {
+	if config.IsLocal {
+		return "unknown"
+	} else {
+		split := strings.Split(config.RepositoryUrl, "/")
+		return split[len(split)-1]
 	}
 }

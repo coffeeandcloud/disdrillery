@@ -1,12 +1,14 @@
 package disdrillery
 
 import (
+	"fmt"
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
+	"io/ioutil"
 	"log"
 	"os"
 )
@@ -16,25 +18,44 @@ type Disdriller struct {
 	transformer []transformer.Transformer
 }
 
+var disdrillerInstance *Disdriller
+
 func (driller *Disdriller) Init(config model.RepositoryConfig) *Disdriller {
-	// Storage config
-	if config.UseInMemoryTempRepository == false {
-		log.Print("Using other storage than InMemoryStorage is currently not supported. Continuing using InMemoryStorage.")
-	}
-	storage := memory.NewStorage()
 
 	// Detail logging
 	var progress *os.File = nil
 	if config.PrintLogs {
 		progress = os.Stdout
 	}
-	r, err := git.Clone(storage, nil, &git.CloneOptions{
-		URL:      config.RepositoryUrl,
-		Progress: progress,
-	})
-	if err != nil {
-		log.Fatal(err)
+
+	// Clone or open repository
+	var r *git.Repository
+	var err error
+	if config.IsLocal {
+		log.Panic("Using local repositories is not yet supported.")
+	} else {
+		options := &git.CloneOptions{
+			URL:      config.RepositoryUrl,
+			Progress: progress,
+		}
+		if config.UseInMemoryTempRepository {
+			log.Println("Cloning repository into memory. This can speed up transformation, but also requires a lot of memory when " +
+				"having huge repositories. Consider using the --in-memory=false option in case of issues.")
+			storage := memory.NewStorage()
+			r, err = git.Clone(storage, nil, options)
+			if err != nil {
+				log.Fatal(err)
+			}
+		} else {
+			dir, err := ioutil.TempDir("", config.GetRepositoryName())
+			if err != nil {
+				log.Fatal(err)
+			}
+			log.Printf("Cloning repository to '%s'. This directory will be deleted after transformation.", dir)
+			r, err = git.PlainClone(dir, true, options)
+		}
 	}
+
 	driller.repository = r
 	return driller
 }
@@ -69,15 +90,21 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 		}
 
 		log.Printf("(%d/%d) Running transformer '%s'", i+1, len(driller.transformer), t.GetName())
+		count := 0
 		refs.ForEach(func(commit *object.Commit) error {
-			driller.visitCommit(commit, &t)
+			count += driller.visitCommit(commit, &t)
+			if count != 0 {
+				fmt.Printf("\r Processed %d files.", count)
+			}
 			return nil
 		})
+
 		t.Export()
 	}
 }
 
-func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Transformer) {
+func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Transformer) int {
+	count := 0
 	if v, isType := (*t).(*transformer.CommitHistoryTransformer); isType {
 		v.AppendCommitVertex(model.CommitVertex{
 			CommitHash:         commit.Hash.String(),
@@ -94,11 +121,12 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 			pHashes[i] = pHash.String()
 		}
 		v.AppendCommitEdge(commit.Hash.String(), pHashes)
+
 	}
 	if v, isType := (*t).(*transformer.CommitContentTransformer); isType {
 		files, err := commit.Files()
 		if err != nil {
-			return
+			return -1
 		}
 		err = files.ForEach(func(file *object.File) error {
 			v.AppendFileContentVertex(model.FileContentVertex{
@@ -107,13 +135,38 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 				FileName:   file.Name,
 				FileSize:   file.Size,
 			})
-			v.CopyFile(file)
+			//v.CopyFile(file)
+			count = count + 1
 			return nil
 		})
 		if err != nil {
-			log.Println(err)
+			log.Fatal(err)
 		}
+		/*
+			err = files.ForEach(func(file *object.File) error {
+				v.CopyFile(file)
+				return nil
+			})
+			if err != nil {
+				log.Println(err)
+			}
+
+		*/
 	}
+	if v, isType := (*t).(*transformer.StructureInfoTransformer); isType {
+		files, err := commit.Files()
+		if err != nil {
+			log.Fatal(err)
+		}
+		var count int64 = 0
+		files.ForEach(func(file *object.File) error {
+			count++
+			return nil
+		})
+		v.AddFileCount(count)
+	}
+	return count
+
 }
 
 func (driller *Disdriller) GetMetaInfos() []index.Meta {
@@ -125,5 +178,8 @@ func (driller *Disdriller) GetMetaInfos() []index.Meta {
 }
 
 func GetInstance() *Disdriller {
-	return &Disdriller{}
+	if disdrillerInstance == nil {
+		disdrillerInstance = &Disdriller{}
+	}
+	return disdrillerInstance
 }

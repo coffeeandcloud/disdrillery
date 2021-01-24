@@ -1,8 +1,8 @@
 package transformer
 
 import (
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 )
 
@@ -15,6 +15,8 @@ type CommitHistoryTransformer struct {
 	edgeOutput       string
 	vertexData       []model.CommitVertex
 	edgeData         []model.CommitEdge
+	vertexExporter   *export.ParquetExporter
+	edgeExporter     *export.ParquetExporter
 }
 
 func (transformer *CommitHistoryTransformer) GetName() string {
@@ -26,17 +28,21 @@ func (transformer *CommitHistoryTransformer) GetOperationalLevel() string {
 }
 
 func (transformer *CommitHistoryTransformer) AppendCommitVertex(commit model.CommitVertex) {
-	transformer.vertexData = append(transformer.vertexData, commit)
+	data := make([]model.CommitVertex, 0)
+	data = append(data, commit)
+	transformer.vertexExporter.WriteBatch(&commit)
 }
 
 func (transformer *CommitHistoryTransformer) AppendCommitEdge(commitHash string, parentHashes []string) {
+	data := make([]model.CommitEdge, 0)
 	for _, parent := range parentHashes {
 		entry := model.CommitEdge{
 			CommitHash:       &commitHash,
 			ParentCommitHash: &parent,
 		}
-		transformer.edgeData = append(transformer.edgeData, entry)
+		data = append(data, entry)
 	}
+	transformer.edgeExporter.WriteBatch(&data)
 }
 
 func (transformer *CommitHistoryTransformer) GetVertexData() *[]model.CommitVertex {
@@ -48,26 +54,28 @@ func (transformer *CommitHistoryTransformer) GetEdgeData() *[]model.CommitEdge {
 }
 
 func GetCommitHistoryTransformerInstance(indexStorage *index.IndexStorage) *CommitHistoryTransformer {
-	return &CommitHistoryTransformer{
+	transformer := CommitHistoryTransformer{
 		name:             CommitHistoryTransformerName,
 		operationalLevel: "commit",
 		vertexOutput:     GetDataFilepathFromWorkingDir(indexStorage, "commit-vertices"),
 		edgeOutput:       GetDataFilepathFromWorkingDir(indexStorage, "commit-edges"),
 	}
+	vertexWriter := export.GetParquetWriter(transformer.vertexOutput, new(model.CommitVertex))
+	edgeWriter := export.GetParquetWriter(transformer.edgeOutput, new(model.CommitEdge))
+	transformer.vertexExporter = export.GetInstance().SetWriter(vertexWriter)
+	transformer.edgeExporter = export.GetInstance().SetWriter(edgeWriter)
+	return &transformer
 }
 
 func (transformer *CommitHistoryTransformer) Export() {
 	// Export vertices
-	vertexWriter := export.GetParquetWriter(transformer.vertexOutput, new(model.CommitVertex))
-	export.GetInstance().
-		SetWriter(vertexWriter).
-		Export(&transformer.vertexData)
+	transformer.vertexExporter.Export()
+	transformer.vertexData = nil
 
 	// Export edges
-	edgeWriter := export.GetParquetWriter(transformer.edgeOutput, new(model.CommitEdge))
-	export.GetInstance().
-		SetWriter(edgeWriter).
-		Export(&transformer.edgeData)
+	transformer.edgeExporter.Export()
+	transformer.edgeData = nil
+
 }
 
 func (transformer *CommitHistoryTransformer) GetMetaInfo() []index.Meta {

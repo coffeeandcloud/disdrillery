@@ -4,9 +4,10 @@ import (
 	"fmt"
 	"github.com/alecthomas/kong"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery"
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/database"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/utils"
 	"log"
 )
 
@@ -20,14 +21,18 @@ func main() {
 	args := CliArguments{}
 	_ = kong.Parse(&args)
 
+	log.Println(utils.GetDisdrilleryAsciLogo())
+
 	// Configure analysis repository
-	disdriller := disdrillery.GetInstance().Init(model.RepositoryConfig{
-		RepositoryUrl:             "https://github.com/google/gson",
+	config := model.RepositoryConfig{
+		RepositoryUrl:             "https://github.com/google/guava",
 		IsLocal:                   false,
 		UseInMemoryTempRepository: false,
 		PrintLogs:                 true,
-	})
-	indexStorage := index.GetInstance().Init("myrepo")
+	}
+	disdriller := disdrillery.GetInstance().Init(config)
+	indexStorage := index.GetInstance().Init(config.GetRepositoryName())
+	//disdriller.AppendTransformer(transformer.GetCommitStructureInfoTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitHistoryTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitContentTransformerInstance(indexStorage))
 	indexStorage.SetMetaInfos(disdriller.GetMetaInfos()).UpdateIndexFile()
