@@ -39,7 +39,7 @@ func (transformer *CommitContentTransformer) AppendFileContentVertex(vertex mode
 }
 
 func (transformer *CommitContentTransformer) AppendFileContentVertices(vertices []model.FileContentVertex) {
-	transformer.contentExporter.WriteBatch(vertices)
+	transformer.contentExporter.WriteBatch(&vertices)
 }
 
 func (transformer *CommitContentTransformer) Export() {
@@ -59,7 +59,7 @@ func GetCommitContentTransformerInstance(indexStorage *index.IndexStorage) *Comm
 }
 
 func (transformer *CommitContentTransformer) GetMetaInfo() []index.Meta {
-	metas := make([]index.Meta, 1)
+	metas := make([]index.Meta, 0)
 	metas = append(metas, index.Meta{
 		Providing: transformer.GetName(),
 		File:      transformer.fileContentOutput,

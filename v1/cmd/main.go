@@ -2,13 +2,14 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/alecthomas/kong"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery"
 	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/utils"
-	"log"
 )
 
 type CliArguments struct {
@@ -25,9 +26,9 @@ func main() {
 
 	// Configure analysis repository
 	config := model.RepositoryConfig{
-		RepositoryUrl:             "https://github.com/google/guava",
+		RepositoryUrl:             "https://github.com/hashicorp/terraform",
 		IsLocal:                   false,
-		UseInMemoryTempRepository: false,
+		UseInMemoryTempRepository: true,
 		PrintLogs:                 true,
 	}
 	disdriller := disdrillery.GetInstance().Init(config)
