@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
-	"github.com/alecthomas/kong"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery"
 	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
@@ -13,27 +13,28 @@ import (
 )
 
 type CliArguments struct {
-	Url       string `help:"URL of the repository to analyze. Will be cloned temporarely from remote host."`
+	RepositoryUri       string `help:"URL of the repository to analyze. Will be cloned temporarely from remote host."`
 	Dir       string `help:"Directory containing a valid git repository to analyze offline."`
 	OutputDir string `help:"Directory where the results should be written to."`
 }
 
 func main() {
 	args := CliArguments{}
-	_ = kong.Parse(&args)
+	getEnvironment(&args);
 
 	log.Println(utils.GetDisdrilleryAsciLogo())
+	log.Println("")
 
 	// Configure analysis repository
 	config := model.RepositoryConfig{
-		RepositoryUrl:             "https://github.com/hashicorp/terraform",
+		RepositoryUrl:             args.RepositoryUri,
 		IsLocal:                   false,
 		UseInMemoryTempRepository: true,
 		PrintLogs:                 true,
 	}
 	disdriller := disdrillery.GetInstance().Init(config)
 	indexStorage := index.GetInstance().Init(config.GetRepositoryName())
-	//disdriller.AppendTransformer(transformer.GetCommitStructureInfoTransformerInstance(indexStorage))
+	disdriller.AppendTransformer(transformer.GetCommitStructureInfoTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitHistoryTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitContentTransformerInstance(indexStorage))
 	indexStorage.SetMetaInfos(disdriller.GetMetaInfos()).UpdateIndexFile()
@@ -43,4 +44,9 @@ func main() {
 		log.Println(state)
 	})
 	fmt.Println(disdriller.GetGoGitRepository())
+}
+
+func getEnvironment(args *CliArguments) {
+	args.OutputDir, _  = os.LookupEnv("OUTPUT_DIR")
+	args.RepositoryUri, _ = os.LookupEnv("REPOSITORY_URI")
 }
