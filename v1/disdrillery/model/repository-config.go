@@ -9,6 +9,7 @@ type RepositoryConfig struct {
 	IsLocal                   bool
 	UseInMemoryTempRepository bool
 	PrintLogs                 bool
+	UseShortHash bool
 }
 
 func (config RepositoryConfig) GetDefaultRepositoryConfigFromUrl(repositoryUrl string) RepositoryConfig {
@@ -17,6 +18,7 @@ func (config RepositoryConfig) GetDefaultRepositoryConfigFromUrl(repositoryUrl s
 		IsLocal:                   false,
 		UseInMemoryTempRepository: true,
 		PrintLogs:                 false,
+		UseShortHash: 			   false,		
 	}
 }
 

@@ -1,15 +1,15 @@
 package transformer
 
 import (
-	"github.com/emirpasic/gods/sets/hashset"
-	"github.com/go-git/go-git/v5/plumbing/object"
-	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
-	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
-	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"io"
 	"log"
 	"os"
 	"path/filepath"
+
+	"github.com/go-git/go-git/v5/plumbing/object"
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
+	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 )
 
 const CommitContentTransformerName string = "CommitContent"
@@ -19,7 +19,6 @@ type CommitContentTransformer struct {
 	operationalLevel  string
 	fileContentOutput string
 	fileContentData   []model.FileContentVertex
-	copiedFiles       *hashset.Set
 	contentExporter   *export.ParquetExporter
 }
 
@@ -51,7 +50,6 @@ func GetCommitContentTransformerInstance(indexStorage *index.IndexStorage) *Comm
 		name:              CommitContentTransformerName,
 		operationalLevel:  "file",
 		fileContentOutput: GetDataFilepathFromWorkingDir(indexStorage, "commit-content-vertex"),
-		copiedFiles:       hashset.New(),
 	}
 	writer := export.GetParquetWriter(transformer.fileContentOutput, new(model.FileContentVertex))
 	transformer.contentExporter = export.GetInstance().SetWriter(writer)
@@ -68,7 +66,14 @@ func (transformer *CommitContentTransformer) GetMetaInfo() []index.Meta {
 }
 
 func (transformer *CommitContentTransformer) CopyFile(file *object.File) {
-	output := index.GetInstance().GetFileDir() + string(filepath.Separator) + file.Hash.String()
+	hash := file.Hash.String()
+	folderHash := string(hash[0:2])
+	folderPath := index.GetInstance().GetFileDir() + string(filepath.Separator) + folderHash;
+	if _, err := os.Stat(folderPath); os.IsNotExist((err)) {
+		os.Mkdir(folderPath, os.ModePerm)
+	}
+
+	output := folderPath + string(filepath.Separator) + file.Hash.String()[2:]
 	if _, err := os.Stat(output); !os.IsNotExist(err) {
 		return
 	}

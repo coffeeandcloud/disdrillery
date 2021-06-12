@@ -12,18 +12,19 @@ import (
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/utils"
 )
 
-type CliArguments struct {
+type Config struct {
 	RepositoryUri       string `help:"URL of the repository to analyze. Will be cloned temporarely from remote host."`
 	Dir       string `help:"Directory containing a valid git repository to analyze offline."`
 	OutputDir string `help:"Directory where the results should be written to."`
+	UseShortHash bool
 }
 
 func main() {
-	args := CliArguments{}
+	args := Config{}
 	getEnvironment(&args);
 
 	log.Println(utils.GetDisdrilleryAsciLogo())
-	log.Println("")
+	log.Println("Cloning repository: '" + args.RepositoryUri + "'")
 
 	// Configure analysis repository
 	config := model.RepositoryConfig{
@@ -31,10 +32,11 @@ func main() {
 		IsLocal:                   false,
 		UseInMemoryTempRepository: true,
 		PrintLogs:                 true,
+		UseShortHash: true,
 	}
 	disdriller := disdrillery.GetInstance().Init(config)
-	indexStorage := index.GetInstance().Init(config.GetRepositoryName())
-	disdriller.AppendTransformer(transformer.GetCommitStructureInfoTransformerInstance(indexStorage))
+	indexStorage := index.GetInstance().Init(args.OutputDir + string(os.PathSeparator) +config.GetRepositoryName())
+	// disdriller.AppendTransformer(transformer.GetCommitStructureInfoTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitHistoryTransformerInstance(indexStorage))
 	disdriller.AppendTransformer(transformer.GetCommitContentTransformerInstance(indexStorage))
 	indexStorage.SetMetaInfos(disdriller.GetMetaInfos()).UpdateIndexFile()
@@ -46,7 +48,8 @@ func main() {
 	fmt.Println(disdriller.GetGoGitRepository())
 }
 
-func getEnvironment(args *CliArguments) {
+func getEnvironment(args *Config) {
 	args.OutputDir, _  = os.LookupEnv("OUTPUT_DIR")
 	args.RepositoryUri, _ = os.LookupEnv("REPOSITORY_URI")
+	args.UseShortHash = true
 }

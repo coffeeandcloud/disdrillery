@@ -131,9 +131,11 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 		}
 		treeData := make([]model.FileContentVertex, 0)
 		err = files.ForEach(func(file *object.File) error {
+			shortCommitHash := commit.Hash.String()[0:6]
+			shortObjectHash := commit.Hash.String()[0:6]
 			treeData = append(treeData, model.FileContentVertex{
-				CommitHash: commit.Hash.String(),
-				ObjectHash: file.Hash.String(),
+				CommitHash: shortCommitHash,
+				ObjectHash: shortObjectHash,
 				FileName:   file.Name,
 				FileSize:   file.Size,
 			})

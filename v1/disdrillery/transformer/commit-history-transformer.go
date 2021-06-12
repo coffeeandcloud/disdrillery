@@ -4,6 +4,7 @@ import (
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/export"
 	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/utils"
 )
 
 const CommitHistoryTransformerName string = "CommitHistory"
@@ -36,9 +37,11 @@ func (transformer *CommitHistoryTransformer) AppendCommitVertex(commit model.Com
 func (transformer *CommitHistoryTransformer) AppendCommitEdge(commitHash string, parentHashes []string) {
 	data := make([]model.CommitEdge, 0)
 	for _, parent := range parentHashes {
+		shortCommitHash := utils.ShortenHash(commitHash)
+		shortParentHash := utils.ShortenHash(parent)
 		entry := model.CommitEdge{
-			CommitHash:       &commitHash,
-			ParentCommitHash: &parent,
+			CommitHash:       &shortCommitHash,
+			ParentCommitHash: &shortParentHash,
 		}
 		data = append(data, entry)
 	}
@@ -79,7 +82,7 @@ func (transformer *CommitHistoryTransformer) Export() {
 }
 
 func (transformer *CommitHistoryTransformer) GetMetaInfo() []index.Meta {
-	metas := make([]index.Meta, 2)
+	metas := make([]index.Meta, 0)
 	metas = append(metas, index.Meta{
 		Providing: transformer.GetName(),
 		File:      transformer.vertexOutput,
