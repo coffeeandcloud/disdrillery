@@ -1,11 +1,11 @@
 package export
 
 import (
+	"log"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/xitongsys/parquet-go-source/local"
 	"github.com/xitongsys/parquet-go/parquet"
 	"github.com/xitongsys/parquet-go/writer"
-	"log"
 )
 
 type ParquetExporter struct {

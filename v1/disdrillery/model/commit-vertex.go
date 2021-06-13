@@ -1,6 +1,7 @@
 package model
 
 type CommitVertex struct {
+	RepositoryName	   string `parquet:"name=REPOSITORY, type=BYTE_ARRAY, convertedtype=UTF8"`
 	CommitHash         string `parquet:"name=COMMIT_HASH, type=BYTE_ARRAY, convertedtype=UTF8"`
 	AuthorName         string `parquet:"name=AUTHOR_NAME, type=BYTE_ARRAY, convertedtype=UTF8"`
 	AuthorMail         string `parquet:"name=AUTHOR_MAIL, type=BYTE_ARRAY, convertedtype=UTF8"`
