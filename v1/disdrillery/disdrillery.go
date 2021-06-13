@@ -2,25 +2,30 @@ package disdrillery
 
 import (
 	"fmt"
+	"io/ioutil"
+	"log"
+	"os"
+
 	"github.com/go-git/go-git/v5"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
 	index "github.com/im-a-giraffe/disdrillery/v1/disdrillery/index"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/model"
 	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/transformer"
-	"io/ioutil"
-	"log"
-	"os"
+	"github.com/im-a-giraffe/disdrillery/v1/disdrillery/utils"
 )
 
 type Disdriller struct {
 	repository  *git.Repository
 	transformer []transformer.Transformer
+	config 		*model.RepositoryConfig
 }
 
 var disdrillerInstance *Disdriller
 
 func (driller *Disdriller) Init(config model.RepositoryConfig) *Disdriller {
+
+	driller.config = &config
 
 	// Detail logging
 	var progress *os.File = nil
@@ -107,8 +112,10 @@ func (driller *Disdriller) Analyze(progressLogger func(state string)) {
 func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Transformer) int {
 	count := 0
 	if v, isType := (*t).(*transformer.CommitHistoryTransformer); isType {
+		shortCommitHash := utils.ShortenHash(commit.Hash.String())
 		v.AppendCommitVertex(model.CommitVertex{
-			CommitHash:         commit.Hash.String(),
+			RepositoryName: 	driller.config.GetRepositoryName(),
+			CommitHash:         shortCommitHash,
 			AuthorName:         commit.Author.Name,
 			AuthorMail:         commit.Author.Email,
 			AuthorTimestamp:    commit.Author.When.Unix(),
@@ -132,7 +139,7 @@ func (driller *Disdriller) visitCommit(commit *object.Commit, t *transformer.Tra
 		treeData := make([]model.FileContentVertex, 0)
 		err = files.ForEach(func(file *object.File) error {
 			shortCommitHash := commit.Hash.String()[0:6]
-			shortObjectHash := commit.Hash.String()[0:6]
+			shortObjectHash := file.Hash.String()[0:6]
 			treeData = append(treeData, model.FileContentVertex{
 				CommitHash: shortCommitHash,
 				ObjectHash: shortObjectHash,

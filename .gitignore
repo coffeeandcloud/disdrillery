@@ -12,3 +12,6 @@ buildNumber.properties
 .idea
 .vscode
 .ipynb_checkpoints
+
+# Binaries
+disdrillery

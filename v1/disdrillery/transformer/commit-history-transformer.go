@@ -31,7 +31,7 @@ func (transformer *CommitHistoryTransformer) GetOperationalLevel() string {
 func (transformer *CommitHistoryTransformer) AppendCommitVertex(commit model.CommitVertex) {
 	data := make([]model.CommitVertex, 0)
 	data = append(data, commit)
-	transformer.vertexExporter.WriteBatch(&commit)
+	transformer.vertexExporter.WriteBatch(&data)
 }
 
 func (transformer *CommitHistoryTransformer) AppendCommitEdge(commitHash string, parentHashes []string) {
